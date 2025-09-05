@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book search</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            padding: 2em;
+        }
+
+        form {
+            max-width: min(80vw, 600px);
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        input[type="text"] {
+            border: 1px solid #ccc;
+            padding: 0.5em;
+            font-size: 16px;
+            width: 300px;
+            margin-right: 0.5em;
+        }
+
+        @media screen and (max-width: 600px) {
+            body {
+                padding: 2em 1em;
+            }
+
+            form {
+                max-width: 100%;
+                display: flex;
+                flex-direction: column;
+                gap: 1em;
+            }
+
+            input[type="text"] {
+                width: 100%;
+                margin-right: 0;
+            }
+
+            button {
+                width: 100%;
+            }
+
+        }
+
+        button {
+            border: 1px solid #ccc;
+            background: none;
+            color: inherit;
+            padding: 0.5em 1em;
+            font-size: 1em;
+            cursor: pointer;
+        }
+
+        h1 {
+            font-size: 1.2em;
+            margin-bottom: 1em;
+        }
+
+        h3 {
+            margin-bottom: 0.2em;
+            font-size: 1em;
+            font-weight: normal;
+        }
+
+        a {
+            word-break: break-all;
+            color:cornflowerblue
+        }
+
+        div#results {
+            margin-top: 1em;
+        }
+
+        div#results ul {
+            margin-top: 2em;
+            display: flex;
+            flex-direction: column;
+            gap: 1em;
+        }
+
+        p#searchQuery {
+            font-size: 0.8em;
+        }
+    </style>
+
+</head>
+
+<body>
+    <h1>Enter a Book Title</h1>
+    <form id="searchForm" onsubmit="searchBook(); return false;">
+        <input type="text" id="titleInput" placeholder="Book title or author">
+        <button type="submit" value="Search" onclick="searchBook()">Search</button>
+    </form>
+    <div id="results"></div>
+
+    <script>
+        function containsCyrillic(text) {
+            return /[\u0400-\u04FF]/.test(text);
+        }
+
+        function searchBook() {
+            const title = document.getElementById('titleInput').value.trim();
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+
+            if (!title) return;
+
+            let language = containsCyrillic(title) ? 'ru' : 'en'; // assume English if not Cyrillic
+
+            let html = `<p id="searchQuery">You searched for: <strong>${title}</strong></p><ul>`;
+
+            const encodedTitle = encodeURIComponent(title);
+
+            const makeLink = (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+
+            // Kobo main
+            const koboUrl = (lang) => `https://www.kobo.com/search?query=${encodedTitle}&fclanguages=${lang}`;
+
+            if (language === 'ru') {
+                html += `<li>
+                    <h3>Kobo (Russian)</h3>
+                ${makeLink(koboUrl(language))}
+                </a>
+                </li>`;
+            } else {
+                [['en', 'English'], ['it', 'Italian'], ['es', 'Spanish'], ['fr', 'French']].forEach(([lang, name]) => {
+                    html += `<li>
+                        <h3>Kobo (${name})</h3>        
+                        ${makeLink(koboUrl(lang))}
+                    </li>`;
+                });
+            }
+
+
+            if (language !== 'ru') {
+                // Kennys
+                kennysUrl = `https://www.kennys.ie/elasticsearch#ges:searchword%3D${encodedTitle}%26orderby%3Drelevance`;
+                html += `<li>
+                <h3>Kennys</h3>
+                ${makeLink(kennysUrl)}
+            </li>`;
+                // LaFeltrinelli
+                laFeltrinelliUrl = `https://www.lafeltrinelli.it/search?query=${encodedTitle}`;
+                html += `<li>
+                <h3>LaFeltrinelli</h3>
+                ${makeLink(laFeltrinelliUrl)}
+            </li>`
+            }
+
+            // Amazon Italy
+            amazonUrl = `https://www.amazon.it/s?k=${encodedTitle}`;
+            html += `<li>
+                <h3>Amazon Italy</h3>
+                ${makeLink(amazonUrl)}
+            </li>`;
+
+            // Storygraph App
+            const storygraphUrl = `https://app.thestorygraph.com/browse?search_term=${encodedTitle}`;
+            html += `<li>
+                <h3>Storygraph</h3>
+                ${makeLink(storygraphUrl)}
+            </li>`;
+
+            // MLOL
+            const milanoUrl = `https://milano.medialibrary.it/media/ricerca.aspx?keywords=${encodedTitle}&seltip=310`; // 310 for ebooks, 600 for edicola
+            html += `<li>
+                <h3>MLOL</h3>
+                ${makeLink(milanoUrl)}
+            </li>`;
+
+            html += '</ul>';
+            resultsDiv.innerHTML = html;
+        }
+
+        // Test button to open all links
+        document.addEventListener('DOMContentLoaded', function () {
+            const resultsDiv = document.getElementById('results');
+            const openAllBtn = document.createElement('button');
+            openAllBtn.innerHTML = 'Open all links &rarr;';
+            openAllBtn.style.display = 'none';
+            openAllBtn.style.marginTop = '1em';
+            openAllBtn.style.fontSize = '0.8em';
+            openAllBtn.onclick = function () {
+                const links = resultsDiv.querySelectorAll('a[href]');
+                links.forEach(link => {
+                    window.open(link.href, '_blank');
+                });
+            };
+            resultsDiv.parentNode.insertBefore(openAllBtn, resultsDiv);
+
+            // Show/hide button depending on results
+            const origSearchBook = searchBook;
+            window.searchBook = function () {
+                origSearchBook();
+                openAllBtn.style.display = resultsDiv.querySelectorAll('a[href]').length ? 'block' : 'none';
+            };
+        });
+    </script>
+</body>
+</body>
+
+</html>
